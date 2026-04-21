@@ -3,6 +3,7 @@
 {% block title %}Incident Tracker{% endblock%}
 
 {% block body %}
+{% now "Y-m-d" as today_date %}
 <script>
   window.onload = function() {
 
@@ -35,8 +36,15 @@
   <h4>Incident Tracker Input</h4>
 </div>
 <div class="container col-sm-12 shadow" style="border: solid 1px lightgrey; padding: 10px;">
-  <form class="row g-3" method="post" action="/incidentinput">
+  <form class="row g-3" method="post" action="/incidentinput" enctype="multipart/form-data">
     {% csrf_token %}
+      {% if error_message %}
+      <div class="col-12">
+        <div class="alert alert-danger my-1" role="alert">
+          {{ error_message }}
+        </div>
+      </div>
+      {% endif %}
       <div class="col-sm-2">
         <label for="input_Country" class="form-label-sm"> Country:</label>
         <select id="input_Country" name="input_Country" class="form-select" required>
@@ -74,7 +82,7 @@
         </div>
         <div class="col-sm-2">
           <label for="input_Date" class="form-label-sm"> Date:</label>
-          <input type="Date" class="form-control" name="input_Date" id="input_Date" required>
+          <input type="Date" class="form-control" name="input_Date" id="input_Date" max="{{ today_date }}" required>
         </div>
         <div class="col-sm-2">
           <label for="input_Time" class="form-label-sm"> Time:</label>
@@ -179,6 +187,10 @@
         <div class="col-12">
           <label for="Remarks" class="form-label-sm"> Remarks (If Any):</label>
           <input type="text" class="form-control" name="Remarks" id="Remarks">
+        </div>
+        <div class="col-sm-6">
+          <label for="Attachment" class="form-label-sm">Attachment (PDF only, optional):</label>
+          <input type="file" class="form-control" name="Attachment" id="Attachment" accept=".pdf,application/pdf">
         </div>
       <div style="text-align: center;" class="col-12">
         <input type="submit" class="btn btn-sm btn-outline-dark">

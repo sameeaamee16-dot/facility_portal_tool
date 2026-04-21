@@ -12,7 +12,23 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 import json
 from django.db.models.functions import TruncMonth
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
 from .views import user_in_add_group, user_in_change_group, user_in_delete_group, user_in_managers_group, user_passes_test, is_superuser
+
+
+def validate_incident_attachment(uploaded_file):
+    if not uploaded_file:
+        return
+
+    file_name = uploaded_file.name.lower()
+    content_type = getattr(uploaded_file, 'content_type', '')
+    if not file_name.endswith('.pdf') or content_type not in ('application/pdf', 'application/x-pdf'):
+        raise ValidationError('Only PDF attachments are allowed.')
+
+
+def validate_incident_date(report_date):
+    if report_date.date() > datetime.today().date():
+        raise ValidationError('Future dates are not allowed for incident creation or update.')
 
 
 @user_passes_test(is_superuser)
@@ -93,10 +109,11 @@ def Incident_Input (request):
                 subLocations[location.location].append(location.sub_locs)
 
             if request.method == 'POST':
+                uploaded_attachment = request.FILES.get('Attachment')
+                Report_Date = datetime.strptime(request.POST.get('input_Date'), '%Y-%m-%d')
                 Report_Country = request.POST.get('input_Country')
                 Report_Location = request.POST.get('input_Loc')
                 Report_Sub_Loc = request.POST.get('input_Sub_Loc')
-                Report_Date = datetime.strptime(request.POST.get('input_Date'), '%Y-%m-%d')
                 Report_Month = Report_Date.month
                 Report_Quarter = (Report_Month - 1)// 3 + 1
                 Report_Year = Report_Date.year
@@ -117,7 +134,22 @@ def Incident_Input (request):
                 Status = request.POST.get('Status')
                 Closure_Date = None if Status == 'Open' or Status == 'In Progress' else datetime.strptime(request.POST.get('Clousre_Date'),'%Y-%m-%d')
                 Remarks = '-' if request.POST.get('Remarks') == '' or request.POST.get('Remarks') == None else request.POST.get('Remarks')
-                incident_input = Incident_Data(Report_Year = Report_Year, Report_Quarter=Report_Quarter, Impact=Impact, Impact_Desc=Impact_Desc, Reported_By=Reported_By, Report_Month = Report_Month, Report_Date = Report_Date, Report_Time = Report_Time,Report_Country=Report_Country, Report_Location = Report_Location, Report_Sub_Loc= Report_Sub_Loc, Inci_Nature=Inci_Nature, Inci_Category= Inci_Category,Equip_Category=Equip_Category,Severity=Severity,Incident_Brief=Incident_Brief,Corrective_Act=Corrective_Act, Root_Cause=Root_Cause, Preventive_Act = Preventive_Act, Prev_Act_Resp=Prev_Act_Resp, Act_Implement_Date=Act_Implement_Date, Status = Status, Closure_Date = Closure_Date, Remarks = Remarks)
+                try:
+                    validate_incident_date(Report_Date)
+                    validate_incident_attachment(uploaded_attachment)
+                except ValidationError as exc:
+                    context = {
+                        'error_message': exc.message,
+                        'subLocations': json.dumps(subLocations),
+                        'locations': sorted(list(set(Locations.values_list('location', flat=True)))),
+                        'countries': sorted(list(set(Locations.values_list('country', flat=True)))),
+                        'user_country': user_country,
+                        'user_location': user_location,
+                        'user_sub_loc': user_sub_Loc
+                    }
+                    return render(request, 'Incidents/00_Incident_Input.html', context)
+
+                incident_input = Incident_Data(Report_Year = Report_Year, Report_Quarter=Report_Quarter, Impact=Impact, Impact_Desc=Impact_Desc, Reported_By=Reported_By, Report_Month = Report_Month, Report_Date = Report_Date, Report_Time = Report_Time,Report_Country=Report_Country, Report_Location = Report_Location, Report_Sub_Loc= Report_Sub_Loc, Inci_Nature=Inci_Nature, Inci_Category= Inci_Category,Equip_Category=Equip_Category,Severity=Severity,Incident_Brief=Incident_Brief,Corrective_Act=Corrective_Act, Root_Cause=Root_Cause, Preventive_Act = Preventive_Act, Prev_Act_Resp=Prev_Act_Resp, Act_Implement_Date=Act_Implement_Date, Status = Status, Closure_Date = Closure_Date, Remarks = Remarks, Attachment=uploaded_attachment)
                 context = {}
                 data = Incident_Data.objects.filter(Report_Year=Report_Year, Report_Month=Report_Month, Report_Location=Report_Location, Reported_By=Reported_By, Report_Date=Report_Date, Report_Time=Report_Time, Inci_Category=Inci_Category, Equip_Category=Equip_Category)
                 for row in data:    
@@ -234,6 +266,7 @@ def update_incident_data(request, incident_data_id):
         incident_data.Closure_Date = incident_data.Closure_Date.strftime("%Y-%m-%d") if incident_data.Closure_Date != None else None
         incident_data.Act_Implement_Date = incident_data.Act_Implement_Date.strftime("%Y-%m-%d") if incident_data.Act_Implement_Date != None else None
         if request.method == 'POST':
+            uploaded_attachment = request.FILES.get('Attachment')
             date = datetime.strptime(request.POST.get('input_Date'), '%Y-%m-%d')
             incident_data.Report_Year = date.year
             incident_data.Report_Month = date.month
@@ -259,6 +292,23 @@ def update_incident_data(request, incident_data_id):
             incident_data.Status = request.POST.get('Status')
             incident_data.Closure_Date = None if incident_data.Status == 'Open' or incident_data.Status == 'In Progress'  else datetime.strptime(request.POST.get('Clousre_Date'),'%Y-%m-%d')
             incident_data.Remarks = '-' if request.POST.get('Remarks') == '' or request.POST.get('Remarks') == None else request.POST.get('Remarks')
+            try:
+                validate_incident_date(date)
+                validate_incident_attachment(uploaded_attachment)
+            except ValidationError as exc:
+                context1 = {
+                    'incident_data': incident_data,
+                    'error_message': exc.message,
+                    'subLocations': json.dumps(subLocations),
+                    'locations':sorted(list(set(Locations.values_list('location', flat= True)))),
+                    'countries':sorted(list(set(Locations.values_list('country', flat= True)))),
+                    'user_country': user_country,
+                    'user_location' : user_location,
+                    'user_sub_loc' :user_sub_Loc
+                }
+                return render(request, 'Incidents/update_incident_data.html', context1)
+            if uploaded_attachment:
+                incident_data.Attachment = uploaded_attachment
             incident_data.set_user(request.user)      
             incident_data.save()
             return redirect('IncidentData')

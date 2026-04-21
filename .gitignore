@@ -1,0 +1,19 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Environment variables (IMPORTANT for DB credentials)
+.env
+
+# OS files
+.DS_Store
+
+# Uploads / media (optional)
+uploads/
+media/
+
+# Logs
+*.log

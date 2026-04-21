@@ -98,6 +98,16 @@
       <b>Remarks:</b>
       <p>{{incident_data.Remarks}}</p>
     </div>
+    <div class="col-12" style="border: solid 1px lightgray; background-color: #D0EDCE;">
+      <b>Attachment:</b>
+      <p>
+        {% if incident_data.Attachment %}
+        <a href="{{ incident_data.Attachment.url }}" target="_blank">Open PDF attachment</a>
+        {% else %}
+        No attachment uploaded.
+        {% endif %}
+      </p>
+    </div>
   </div>
 
 

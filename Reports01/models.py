@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import FileExtensionValidator
 PERCENTAGE_VALIDATOR = [MinValueValidator(0), MaxValueValidator(100)]
 
 
@@ -64,6 +65,12 @@ class Incident_Data(models.Model):
     Status = models.CharField(max_length=20)
     Closure_Date = models.DateField(blank=True, null=True)
     Remarks = models.TextField(null=True, blank=True)
+    Attachment = models.FileField(
+        upload_to='incident_attachments/',
+        null=True,
+        blank=True,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf'])]
+    )
     Date_Created = models.DateTimeField(auto_now_add=True)
     Date_Updated = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='%(class)s_created_by')
